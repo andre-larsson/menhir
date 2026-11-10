@@ -55,7 +55,10 @@ Each can be judged and undone on its own.
 
 1. **Lessons live in a message row** under the island name (desktop and portrait phones) or above the
    pad (landscape phones), not in overlays on the board and not in a separate tutorial level. One step at
-   a time, with what the step talks about outlined on the board.
+   a time, with what the step talks about outlined on the board. Cost: while a lesson shows on a
+   360x640 phone the board is about 20% smaller (First Light tiles 38 px instead of 47, Black Ice 31
+   instead of 40; on 390x844 it is 0-15%). On short phones the lesson's label runs inline to save a line.
+   The old build hid its hint text entirely on phones that small.
 2. **Six islands carry a lesson** (table below), with the copy in `js/coach.js`. First Light has three
    steps (goal and walking, pushing and the preview, rising); Peat Bog two; the rest one.
 3. **One-off tips** in a gold-labelled toast for moments that can happen anywhere: a blocked push, a held

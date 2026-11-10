@@ -585,6 +585,12 @@ kbd {
   .win-card { padding: 16px 16px 16px; }
 }
 @media (max-height: 700px) and (max-width: 560px) {
+  /* short portrait phones: the lesson label runs inline to save a line of board */
+  .coach { padding-top: 8px; padding-bottom: 8px; }
+  .coach-body { display: block; }
+  .coach-chip { display: inline; margin-right: 6px; }
+  .coach-text { display: inline; }
+  .coach-sub { display: block; margin-top: 2px; }
   .dpad { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 44px); }
   .pad-aux { width: 58px; height: 58px; }
   .pad-col { gap: 6px; }
