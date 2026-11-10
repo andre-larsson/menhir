@@ -377,7 +377,10 @@
       return false;
     }
     // Held keys walk but never push: a stone only moves on a fresh press.
-    if (res.pushed && (opts.repeat || opts.group)) return false;
+    if (res.pushed && (opts.repeat || opts.group)) {
+      if (opts.repeat) showTip('held', 4500);
+      return false;
+    }
     const speed = opts.group ? 0.72 : 1;
     const dur = schedule(res.events, speed);
     if (!opts.group) {

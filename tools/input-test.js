@@ -100,6 +100,7 @@ const find = (pred) => DEFS.findIndex(pred);
   await settle();
   s = await st();
   check('a held key never pushes a stone', s.pushes === 0 && s.moves === atStone.moves, JSON.stringify(s));
+  check('...and says so once, with a tip', await page.eval('document.getElementById("toast").classList.contains("tip") && /never pushes/.test(document.getElementById("toast").textContent)'));
   await page.key('ArrowDown');
   await settle();
   s = await st();

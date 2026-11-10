@@ -83,6 +83,7 @@
     hint: { key: 'Stuck? Hint (H) shows the next push. A hinted solve earns no golden sun.', touch: 'Stuck? Hint shows the next push. A hinted solve earns no golden sun.' },
     water: 'Open water swallows a stone for good. A blue outline warns you before you push.',
     blocked: 'Blocked. If anything in a chain can’t move (a wall, a rock, a jammed stone), nothing moves.',
+    held: 'Holding a key walks but never pushes. Press again to push.',
   };
 
   function lessonFor(name) { return LESSONS[name] || null; }
