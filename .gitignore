@@ -1,0 +1,22 @@
+# Build output (the Pages workflow builds it)
+_site/
+dist/
+
+# Node, in case tooling is added later
+node_modules/
+npm-debug.log*
+
+# Screenshots and scratch output from tools/
+out/
+*.log
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local env files
+.env
+.env.*

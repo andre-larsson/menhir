@@ -2,7 +2,7 @@
 /*
  * Screenshot a level in headless Chrome (development tool).
  *   node tools/shot.js out.png [query] [width height [scale mobile]]
- *   node tools/shot.js /tmp/l3.png "level=3&play=NNE" 390 844 2 mobile
+ *   node tools/shot.js out/l3.png "level=3&play=NNE" 390 844 2 mobile
  * Expects the game served at MENHIR_URL (default http://127.0.0.1:8861/index.html).
  */
 'use strict';

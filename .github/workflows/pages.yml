@@ -1,0 +1,52 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+      - name: Setup Node
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "24"
+      - name: Rule and level checks
+        run: |
+          node tools/rules-test.js
+          node tools/solve.js --check
+      - name: Build
+        run: sh tools/build-site.sh _site
+      - name: Check
+        run: test -f _site/index.html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4.0.0
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5.0.0
