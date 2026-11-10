@@ -133,7 +133,7 @@
     closeOverlay('win');
     setStuck();
     updateHud();
-    if (!opts || !opts.quiet) { toast(''); Audio.play('intro'); }
+    if (!opts || !opts.quiet) { toast(null); Audio.play('intro'); }
   }
 
   function updateHud() {
@@ -146,15 +146,19 @@
   }
 
   // ------------------------------------------------------------ toast
-  let toastTimer = 0;
+  // A tip holds the spot until it times out; ordinary notes wait their turn
+  // (they are dropped). toast(null) clears everything, e.g. on a new island.
+  let toastTimer = 0, tipUntil = 0;
   function toast(msg, ms, tip) {
     const el = $('toast');
+    if (msg !== null && !tip && now() < tipUntil) return;
     clearTimeout(toastTimer);
-    if (!msg) { el.classList.remove('show'); return; }
+    if (!msg) { el.classList.remove('show'); tipUntil = 0; return; }
     el.textContent = msg;
     el.classList.toggle('tip', !!tip);
     el.classList.add('show');
-    toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2600);
+    tipUntil = tip ? now() + (ms || 2600) : 0;
+    toastTimer = setTimeout(() => { el.classList.remove('show'); tipUntil = 0; }, ms || 2600);
   }
 
   // ------------------------------------------------------------ lessons in play
@@ -494,10 +498,10 @@
     g.undo.push(g.state);
     g.state = L.cloneState(g.initial);
     g.restarts++;
-    maybeHintTip();
     afterJump();
     Audio.play('undo');
     toast(app.classList.contains('touch') ? 'Restarted (Undo brings your moves back)' : 'Restarted (Z brings your moves back)', 1800);
+    maybeHintTip();
   }
 
   function afterJump() {
@@ -520,6 +524,7 @@
     g.hint = { x: h.from % g.level.w, y: Math.floor(h.from / g.level.w), dir: h.dir };
     Audio.play('hint');
     const more = h.d === 0 ? 'That finishes it.' : h.d === 1 ? 'One more push after that.' : `${h.d} more pushes after that.`;
+    toast(null);
     toast(`Push ${['north', 'east', 'south', 'west'][h.dir]} from the marked tile. ${more}`, 3600);
   }
 
@@ -724,6 +729,9 @@
     const code = ev.code;
     if (isOpen('menu')) {
       if (code === 'Escape' && g.level) { ev.preventDefault(); closeMenu(); }
+      // Enter starts from the title unless another control has focus.
+      const a = document.activeElement;
+      if (code === 'Enter' && (!a || a === document.body || a === $('btn-play'))) { ev.preventDefault(); Audio.unlock(); playFromMenu(); }
       return;
     }
     if (isOpen('win')) {
