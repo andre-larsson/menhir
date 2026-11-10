@@ -16,7 +16,7 @@
   const renderer = new Renderer(canvas);
 
   // ------------------------------------------------------------ persistence
-  // A separate key from the earlier Menhir build, so the two never share scores.
+  // Keys are prefixed menhir2.: every project site on the domain shares one origin.
   const STORE = 'menhir2.progress';
   let progress = { best: {}, perfect: {}, current: 0, seenMenu: false, preview: true, deadBar: true };
   try {
@@ -184,6 +184,7 @@
     row.hidden = !g.coachRow;
     row.classList.toggle('lesson', g.coachRow === 'lesson');
     row.classList.toggle('riddle', g.coachRow === 'riddle');
+    row.classList.toggle('done', !!g.won);
     let chip = '', text = '', sub = '';
     if (g.coachRow === 'lesson' && g.coach) {
       const steps = g.coach.lesson.steps;
@@ -433,6 +434,7 @@
       if (perfectNow) progress.perfect[d.name] = true;
       save();
       const wonState = g.state;
+      setTimeout(() => { if (g.won && g.state === wonState) renderCoach(); }, dur);
       setTimeout(() => { if (g.won && g.state === wonState) Audio.play('win'); }, dur + 150);
       setTimeout(() => showWin(prevBest, wasPerfect, perfectNow), dur + 1100);
     }
@@ -515,6 +517,7 @@
     renderer.clearEffects();
     checkDead();
     updateHud();
+    renderCoach();
   }
 
   // ------------------------------------------------------------ hints
