@@ -192,6 +192,7 @@
       const walls = this.wallSegs(level);
       for (const wseg of walls) if (wseg.side !== 'S') this.drawWall(wseg);
       this.drawSockets(level, state, anim, el, now, g.dawn);
+      if (g.coachTiles && g.coachTiles.length) this.drawCoach(g.coachTiles, now);
       if (g.hint) this.drawHint(g.hint, now);
       if (g.hover) this.drawHover(g.hover, state);
 
@@ -832,6 +833,45 @@
         }
         ctx.stroke();
       }
+    }
+
+    // ---------------------------------------------------------------- lesson highlight
+    // A softly pulsing outline around the tiles a lesson talks about
+    // (sockets, frost, a stone...). Neighbouring tiles share one outline.
+    drawCoach(tiles, now) {
+      const ctx = this.ctx, T = this.T;
+      const p = 0.5 + 0.5 * Math.sin(now / 420);
+      const has = new Set(tiles.map(([x, y]) => x + ',' + y));
+      const on = (x, y) => has.has(x + ',' + y);
+      const G = 0.07;
+      const Q = (x, y) => this.P(x, y, 0.01);
+      ctx.save();
+      ctx.fillStyle = `rgba(255,226,150,${0.1 + 0.08 * p})`;
+      ctx.beginPath();
+      for (const [x, y] of tiles) {
+        const x0 = on(x - 1, y) ? x : x - G, x1 = on(x + 1, y) ? x + 1 : x + 1 + G;
+        const y0 = on(x, y - 1) ? y : y - G, y1 = on(x, y + 1) ? y + 1 : y + 1 + G;
+        const [ax, ay] = Q(x0, y0), [bx, by] = Q(x1, y1);
+        ctx.rect(ax, ay, bx - ax, by - ay);
+      }
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,232,170,${0.55 + 0.4 * p})`;
+      ctx.lineWidth = Math.max(2, T * 0.045);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(255,214,120,0.8)';
+      ctx.shadowBlur = T * 0.18 * p;
+      ctx.beginPath();
+      const seg = (a, b, c, d) => { const [x0, y0] = Q(a, b), [x1, y1] = Q(c, d); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); };
+      for (const [x, y] of tiles) {
+        const x0 = x - G, x1 = x + 1 + G, y0 = y - G, y1 = y + 1 + G;
+        const l = on(x - 1, y), r = on(x + 1, y), u = on(x, y - 1), d = on(x, y + 1);
+        if (!u) seg(l ? x : x0, y0, r ? x + 1 : x1, y0);
+        if (!d) seg(l ? x : x0, y1, r ? x + 1 : x1, y1);
+        if (!l) seg(x0, u ? y : y0, x0, d ? y + 1 : y1);
+        if (!r) seg(x1, u ? y : y0, x1, d ? y + 1 : y1);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
     // ---------------------------------------------------------------- hint

@@ -6,6 +6,7 @@
   const Audio = window.MenhirAudio;
   const { Renderer, TIMING } = window.MenhirRender;
   const DEFS = window.MENHIR_LEVELS;
+  const C = window.MenhirCoach;
   const params = new URLSearchParams(location.search);
 
   const $ = (id) => document.getElementById(id);
@@ -27,6 +28,23 @@
     try { localStorage.setItem(STORE, JSON.stringify(progress)); } catch (e) { /* ignore */ }
   }
   const isPerfect = (d) => !!progress.perfect[d.name];
+  const isSolved = (d) => progress.best[d.name] != null;
+
+  // What the in-play lessons and tips have already shown, so replays don't nag.
+  const COACH_STORE = 'menhir2.coach';
+  let coachMem = { seen: {}, off: false };
+  try {
+    const raw = localStorage.getItem(COACH_STORE);
+    if (raw) coachMem = Object.assign(coachMem, JSON.parse(raw));
+  } catch (e) { /* storage unavailable */ }
+  coachMem.seen = coachMem.seen || {};
+  function saveCoach() {
+    try { localStorage.setItem(COACH_STORE, JSON.stringify(coachMem)); } catch (e) { /* ignore */ }
+  }
+  // ?coach=0 turns lessons and tips off for this page load only (screenshots, tools).
+  const coachParamOff = params.get('coach') === '0';
+  const tipsOn = () => !coachParamOff && !coachMem.off;
+  const isTouch = () => app.classList.contains('touch');
 
   // ------------------------------------------------------------ game state
   // Each level in two variants: as designed, and rotated 90 degrees (used when
@@ -64,6 +82,12 @@
     hinted: false,      // a hint was used on this attempt
     dead: false,        // the level can no longer be won from here
     analyses: [],       // per rotation: whole-level analysis (MenhirSolver.Analysis)
+    coach: null,        // { lesson, step } while an island's lesson is showing
+    coachRow: null,     // 'lesson' | 'riddle' | null: what the message row shows
+    coachTiles: null,   // tiles to highlight on the board for the current step
+    restarts: 0,        // on this visit to the island (for the hint tip)
+    deadCount: 0,       // times the dead-end bar appeared on this visit
+    loadedAt: 0,
   };
 
   function analysis() { return g.analyses[g.rot] || null; }
@@ -74,10 +98,6 @@
   function loadLevel(i, opts) {
     i = Math.max(0, Math.min(DEFS.length - 1, i));
     g.levelIndex = i;
-    g.rot = bestRotation(i, -1);
-    g.level = variant(i, g.rot).level;
-    g.initial = variant(i, g.rot).state;
-    g.state = L.cloneState(g.initial);
     g.undo = [];
     g.anim = null;
     g.queue = [];
@@ -91,6 +111,17 @@
     g.warnedUpsideDown = false;
     g.intro = now();
     g.idleSince = now();
+    g.loadedAt = now();
+    g.restarts = 0;
+    g.deadCount = 0;
+    setupCoach();
+    // The message row changes the board's space: fit the canvas before
+    // choosing the rotation and laying out the island.
+    fitCanvas();
+    g.rot = bestRotation(i, -1);
+    g.level = variant(i, g.rot).level;
+    g.initial = variant(i, g.rot).state;
+    g.state = L.cloneState(g.initial);
     startAnalysis();
     renderer.curLevel = g.level;
     renderer.clearEffects();
@@ -98,7 +129,6 @@
     save();
     $('lvl-num').textContent = String(i + 1);
     $('lvl-name').textContent = DEFS[i].name;
-    $('hint').innerHTML = DEFS[i].hint || '';
     document.title = `Menhir · ${DEFS[i].name}`;
     closeOverlay('win');
     setStuck();
@@ -108,6 +138,7 @@
 
   function updateHud() {
     $('pushes-n').textContent = String(g.state.pushes);
+    $('pushes-word').textContent = g.state.pushes === 1 ? 'push' : 'pushes';
     const par = DEFS[g.levelIndex].par;
     $('par-n').textContent = par != null ? String(par) : '–';
     $('moves-n').textContent = String(g.state.moves);
@@ -116,13 +147,134 @@
 
   // ------------------------------------------------------------ toast
   let toastTimer = 0;
-  function toast(msg, ms) {
+  function toast(msg, ms, tip) {
     const el = $('toast');
     clearTimeout(toastTimer);
     if (!msg) { el.classList.remove('show'); return; }
     el.textContent = msg;
+    el.classList.toggle('tip', !!tip);
     el.classList.add('show');
     toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2600);
+  }
+
+  // ------------------------------------------------------------ lessons in play
+  // The message row under the island name shows the lesson of an island that
+  // brings in a new rule, one step at a time, with what it talks about marked
+  // on the board. Otherwise it shows the island's riddle until it is solved.
+  function setupCoach() {
+    const d = DEFS[g.levelIndex];
+    const lesson = C.lessonFor(d.name);
+    g.coach = lesson && tipsOn() && !coachMem.seen[lesson.id] ? { lesson, step: 0 } : null;
+    if (g.coach && lesson.covers) { lesson.covers.forEach((t) => { coachMem.seen['tip:' + t] = true; }); saveCoach(); }
+    g.coachRow = g.coach ? 'lesson' : !isSolved(d) && d.hint ? 'riddle' : null;
+    g.coachTiles = null;
+    g.coachTilesFor = null;
+    renderCoach();
+  }
+
+  function coachStep() { return g.coach ? g.coach.lesson.steps[g.coach.step] || null : null; }
+
+  function renderCoach() {
+    const row = $('coach');
+    const d = DEFS[g.levelIndex];
+    row.hidden = !g.coachRow;
+    row.classList.toggle('lesson', g.coachRow === 'lesson');
+    row.classList.toggle('riddle', g.coachRow === 'riddle');
+    let chip = '', text = '', sub = '';
+    if (g.coachRow === 'lesson' && g.coach) {
+      const steps = g.coach.lesson.steps;
+      const st = steps[Math.min(g.coach.step, steps.length - 1)];
+      chip = g.coach.lesson.chip;
+      text = C.say(st.text, isTouch());
+      sub = C.say(st.sub, isTouch());
+    } else if (g.coachRow === 'riddle') text = d.hint;
+    $('coach-chip').textContent = chip;
+    $('coach-chip').hidden = !chip;
+    $('coach-text').textContent = text;
+    $('coach-sub').textContent = sub;
+    $('coach-sub').hidden = !sub;
+    $('coach-x').setAttribute('aria-label', g.coachRow === 'lesson' ? 'Hide this tip' : 'Hide');
+    const step = coachStep();
+    app.classList.toggle('coach-pad', !!(step && step.pad && !g.won));
+    // replay the entrance animation when the text changes
+    const key = g.levelIndex + ':' + g.coachRow + ':' + (g.coach ? g.coach.step : '');
+    if (row.dataset.key !== key) {
+      row.dataset.key = key;
+      row.classList.remove('enter');
+      void row.offsetWidth;
+      row.classList.add('enter');
+    }
+  }
+
+  // Game events of one move: { move, push, slide, bog, sink, win }.
+  function coachEvent(ev) {
+    if (!g.coach) return;
+    const steps = g.coach.lesson.steps;
+    const before = g.coach.step;
+    const after = ev.win ? steps.length : C.advance(g.coach.lesson, before, ev);
+    if (after === before) return;
+    g.coach.step = after;
+    if (after >= steps.length) { coachMem.seen[g.coach.lesson.id] = true; saveCoach(); }
+    renderCoach();
+  }
+
+  function hideCoach() {
+    if (g.coach) { coachMem.seen[g.coach.lesson.id] = true; saveCoach(); }
+    g.coach = null;
+    g.coachRow = null;
+    renderCoach();
+  }
+
+  // One-off tips for moments that can come up on any island.
+  function showTip(id, ms) {
+    if (!tipsOn() || coachMem.seen['tip:' + id]) return false;
+    coachMem.seen['tip:' + id] = true;
+    saveCoach();
+    toast(C.say(C.TIPS[id], isTouch()), ms || 6000, true);
+    return true;
+  }
+  function nudge(ids, ms) {
+    ids.forEach((id) => $(id).classList.add('nudge'));
+    setTimeout(() => ids.forEach((id) => $(id).classList.remove('nudge')), ms);
+  }
+  // Offer the hint button to a player who seems stuck (from island 3 on).
+  function maybeHintTip() {
+    if (g.levelIndex < 2 || g.won || coachMem.seen['tip:hint'] || !tipsOn()) return;
+    const long = now() - g.loadedAt > 90000 && g.state.pushes >= DEFS[g.levelIndex].par;
+    if (g.deadCount >= 2 || g.restarts >= 2 || long) {
+      if (showTip('hint', 7000)) nudge(['btn-hint', 'pad-hint'], 7000);
+    }
+  }
+
+  // Tiles the current lesson step talks about, in the current rotation.
+  function computeCoachTiles() {
+    const step = coachStep();
+    if (!step || !step.hl || g.won) return null;
+    if (g.coachTilesFor === g.state && g.coachTilesStep === step) return g.coachTiles;
+    const lv = g.level, st = g.state, out = [];
+    const add = (x, y) => { if (!out.some(([a, b]) => a === x && b === y)) out.push([x, y]); };
+    const live = st.stones.filter((t) => !t.sunk);
+    for (const h of step.hl) {
+      if (h === 'socket') lv.sockets.forEach((i) => add(i % lv.w, Math.floor(i / lv.w)));
+      else if (h === 'stones' || h === 'marked') {
+        live.forEach((t) => { if (h === 'stones' || t.k === 'm') L.stoneCells(t).forEach(([x, y]) => add(x, y)); });
+      } else if (h === 'far') {
+        let far = null, fd = -1;
+        live.forEach((t) => { const dd = Math.abs(t.x - st.px) + Math.abs(t.y - st.py); if (dd > fd) { fd = dd; far = t; } });
+        if (far) L.stoneCells(far).forEach(([x, y]) => add(x, y));
+      } else if (h === 'keeper') add(st.px, st.py);
+      else {
+        for (let y = 0; y < lv.h; y++) for (let x = 0; x < lv.w; x++) {
+          const base = lv.tiles[y * lv.w + x], t = L.tileAt(lv, st, x, y);
+          if ((h === 'frost' && t === L.FROST) || (h === 'bog' && t === L.BOG) || (h === 'water' && t === L.WATER) ||
+              (h === 'filled' && base === L.BOG && t !== L.BOG)) add(x, y);
+        }
+      }
+    }
+    g.coachTiles = out;
+    g.coachTilesFor = g.state;
+    g.coachTilesStep = step;
+    return out;
   }
 
   // ------------------------------------------------------------ moves
@@ -217,6 +369,7 @@
       g.anim = { start: now(), dur: 160, events: [{ type: 'bump', dir }] };
       Audio.play('bump');
       g.queue = g.queue.filter((q) => !q.group); // abandon an auto-walk
+      if (!opts.group && L.stoneAt(g.state, g.state.px + L.DX[dir], g.state.py + L.DY[dir]) >= 0) showTip('blocked', 5500);
       return false;
     }
     // Held keys walk but never push: a stone only moves on a fresh press.
@@ -238,14 +391,22 @@
       checkDead();
       if (g.dead && !before) {
         const st = g.state;
+        g.deadCount++;
         setTimeout(() => { if (g.state === st && g.dead && stuckShown()) Audio.play('stuck'); }, dur);
+        maybeHintTip();
       }
     }
     if (!g.warnedUpsideDown && L.socketStatus(g.level, g.state).includes('wrong')) {
       g.warnedUpsideDown = true;
-      setTimeout(() => toast('Upside down: a marked stone must stand sun to the sky.', 3200), dur);
+      setTimeout(() => toast('Upside down: a marked stone must stand with its sun to the sky.', 3600, true), dur);
     }
     const rolls = res.events.filter((e) => e.type === 'roll');
+    const ev = {
+      move: true, push: !!res.pushed, win: L.isWon(g.level, g.state),
+      slide: rolls.some((e) => e.slide), bog: rolls.some((e) => e.fate === 'bog'), sink: rolls.some((e) => e.fate === 'sink'),
+    };
+    setTimeout(() => coachEvent(ev), Math.min(dur, 400));
+    if (ev.sink) setTimeout(() => showTip('water'), dur);
     const stonesMoved = new Set(rolls.map((e) => e.stone)).size;
     const glides = rolls.filter((e) => e.slide).length;
     if (stonesMoved >= 3) setTimeout(() => toast(stonesMoved >= 4 ? `Cascade! ${stonesMoved} stones` : 'Domino!', 1500), dur * 0.6);
@@ -292,7 +453,20 @@
   function setStuck() {
     const show = stuckShown();
     $('stuck').hidden = !show;
-    if (show) $('stuck-text').textContent = L.isHopeless(g.level, g.state) ? 'A stone was lost. No way forward from here.' : 'No way forward from here.';
+    if (show) {
+      $('stuck-text').textContent = L.isHopeless(g.level, g.state) ? 'A stone was lost. No way forward from here.' : 'No way forward from here.';
+      // The first time, say what the bar means and what Rewind does.
+      if (!g.teachingRewind && tipsOn() && !coachMem.seen['tip:rewind']) g.teachingRewind = true;
+      $('stuck-sub').hidden = !g.teachingRewind;
+      if (g.teachingRewind) $('stuck-sub').textContent = C.TIPS.rewind;
+      $('stuck').classList.toggle('teach', !!g.teachingRewind);
+    } else if (g.teachingRewind) {
+      g.teachingRewind = false;
+      coachMem.seen['tip:rewind'] = true;
+      saveCoach();
+      $('stuck-sub').hidden = true;
+      $('stuck').classList.remove('teach');
+    }
   }
 
   function doUndo() {
@@ -319,6 +493,8 @@
     if (g.state.moves === 0 && !g.undo.length) return;
     g.undo.push(g.state);
     g.state = L.cloneState(g.initial);
+    g.restarts++;
+    maybeHintTip();
     afterJump();
     Audio.play('undo');
     toast(app.classList.contains('touch') ? 'Restarted (Undo brings your moves back)' : 'Restarted (Z brings your moves back)', 1800);
@@ -412,6 +588,8 @@
     }
     g.previews = list;
     g.previewFor = g.state;
+    // A preview that drops a stone into open water is the moment to explain water.
+    if (list.some((p) => p.rolls.some((e) => e.fate === 'sink'))) showTip('water');
     return list;
   }
 
@@ -449,6 +627,7 @@
       if (best != null) st = `Best ${best} · par ${d.par}`;
       else if (i === g.levelIndex && g.state && g.state.moves) st = 'In progress';
       else st = d.tag || 'Unsolved';
+      if (i === playTarget()) b.classList.add('next');
       b.querySelector('.st').textContent = st;
       b.setAttribute('aria-label', `${i + 1}. ${d.name}. ${st}${isPerfect(d) ? '. Golden sun' : ''}`);
       b.addEventListener('click', () => {
@@ -459,17 +638,40 @@
       li.appendChild(b);
       list.appendChild(li);
     });
-    $('progress-line').innerHTML = `<b>${solved}</b> of ${DEFS.length} islands at dawn &nbsp;·&nbsp; <span class="gold">${SUN_SVG}<b>${perfect}</b></span> golden suns (within par, no hints)`;
+    $('progress-line').innerHTML = solved || perfect
+      ? `<b>${solved}</b> of ${DEFS.length} islands at dawn <span class="dot">·</span> <span class="gold">${SUN_SVG}<b>${perfect}</b> golden ${perfect === 1 ? 'sun' : 'suns'}</span>`
+      : `${DEFS.length} islands. Match each one’s par without hints for a golden sun.`;
+    const t = playTarget();
+    const fresh = !progress.seenMenu && solved === 0 && !(g.state && g.state.moves);
+    $('play-label').textContent = fresh ? 'Play' : t === g.levelIndex && !g.won ? 'Continue' : 'Play on';
+    $('play-sub').textContent = `${t + 1} · ${DEFS[t].name}`;
     $('btn-music').textContent = Audio.musicOn() ? 'Music: on' : 'Music: off';
     $('opt-deadbar').checked = progress.deadBar !== false;
+    $('opt-tips').checked = !coachMem.off;
+  }
+
+  // The island the big Play button leads to: the current one, or after a
+  // solved one, the next island not yet solved.
+  function playTarget() {
+    if (!g.won) return g.levelIndex;
+    for (let k = 1; k <= DEFS.length; k++) {
+      const j = (g.levelIndex + k) % DEFS.length;
+      if (!isSolved(DEFS[j])) return j;
+    }
+    return Math.min(g.levelIndex + 1, DEFS.length - 1);
+  }
+  function playFromMenu() {
+    const t = playTarget();
+    if (t !== g.levelIndex || g.won) loadLevel(t);
+    closeMenu();
   }
 
   function openMenu() {
     buildMenu();
     closeOverlay('win');
     openOverlay('menu');
-    const cur = $('level-list').querySelector('.current');
-    if (cur && !app.classList.contains('touch')) cur.focus({ preventScroll: true });
+    $('menu').scrollTop = 0;
+    if (!isTouch()) $('btn-play').focus({ preventScroll: true });
   }
   function closeMenu() {
     closeOverlay('menu');
@@ -483,21 +685,24 @@
     if (!g.won) return;
     const d = DEFS[g.levelIndex];
     $('win-name').textContent = d.name;
-    const p = g.state.pushes, m = g.state.moves;
-    let stats = `${p} ${p === 1 ? 'push' : 'pushes'} · par ${d.par} · ${m} moves`;
-    if (prevBest != null && p < prevBest) stats += ` · new best (was ${prevBest})`;
-    else if (prevBest != null) stats += ` · best ${prevBest}`;
-    $('win-stats').textContent = stats;
+    const p = g.state.pushes;
+    let stats = `<b>${p}</b> ${p === 1 ? 'push' : 'pushes'} <span class="dot">·</span> par ${d.par}`;
+    if (prevBest != null && p < prevBest) stats += ` <span class="dot">·</span> new best`;
+    else if (prevBest != null) stats += ` <span class="dot">·</span> best ${prevBest}`;
+    $('win-stats').innerHTML = stats;
     const medal = $('win-medal');
     medal.classList.toggle('gold', perfectNow);
     let note;
-    if (perfectNow && !wasPerfect) note = 'Golden sun! You matched the fewest possible pushes.';
-    else if (perfectNow) note = 'Golden sun again. Flawless.';
-    else if (g.hinted && p <= d.par) note = 'Solved within par, but with a hint. Try it unaided for a golden sun.';
-    else note = `Solve it in ${d.par} pushes or fewer, without hints, for a golden sun.`;
-    if (g.levelIndex === DEFS.length - 1) note += ' Every island has seen the dawn. Thank you for playing!';
+    if (perfectNow && !wasPerfect) note = 'Golden sun: you matched the fewest possible pushes.';
+    else if (perfectNow) note = 'Golden sun again.';
+    else if (g.hinted && p <= d.par) note = 'Within par, but with a hint. Solve it unaided for a golden sun.';
+    else note = `Solve it in ${d.par} ${d.par === 1 ? 'push' : 'pushes'} without hints for a golden sun.`;
+    const allDone = DEFS.every(isSolved);
+    if (g.levelIndex === DEFS.length - 1 && allDone) note += ' Every island has seen the dawn. Thank you for playing!';
     $('win-note').textContent = note;
+    $('win-note').classList.toggle('gold', perfectNow);
     $('btn-next').textContent = g.levelIndex === DEFS.length - 1 ? 'All islands' : 'Next island';
+    $('btn-replay').textContent = perfectNow ? 'Replay' : 'Try again';
     openOverlay('win');
     $('btn-next').focus({ preventScroll: true });
   }
@@ -546,7 +751,7 @@
 
   // ------------------------------------------------------------ touch / pointer
   function markTouch() {
-    if (!app.classList.contains('touch')) { app.classList.add('touch'); requestAnimationFrame(resize); }
+    if (!app.classList.contains('touch')) { app.classList.add('touch'); renderCoach(); requestAnimationFrame(resize); }
   }
   const forceTouch = params.get('touch');
   if (forceTouch === '1' || (forceTouch !== '0' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) app.classList.add('touch');
@@ -617,6 +822,8 @@
   $('btn-menu').addEventListener('click', () => { Audio.unlock(); openMenu(); });
   $('btn-next').addEventListener('click', () => { Audio.unlock(); nextLevel(); });
   $('btn-win-stay').addEventListener('click', () => closeOverlay('win'));
+  $('btn-replay').addEventListener('click', () => { Audio.unlock(); doRestart(); });
+  $('coach-x').addEventListener('click', () => { hideCoach(); });
   $('btn-sound').addEventListener('click', () => { Audio.unlock(); toggleSound(); });
   $('btn-preview').addEventListener('click', () => setPreview(!g.preview));
   $('btn-music').addEventListener('click', () => {
@@ -629,8 +836,22 @@
     save();
     setStuck();
   });
+  $('opt-tips').addEventListener('change', () => {
+    coachMem.off = !$('opt-tips').checked;
+    saveCoach();
+    if (coachMem.off && g.coach) { g.coach = null; g.coachRow = !isSolved(DEFS[g.levelIndex]) && DEFS[g.levelIndex].hint ? 'riddle' : null; renderCoach(); }
+    else if (!coachMem.off && !g.won && !(g.state && g.state.pushes)) setupCoach();
+  });
+  $('btn-tips-reset').addEventListener('click', () => {
+    coachMem.seen = {};
+    coachMem.off = false;
+    saveCoach();
+    $('opt-tips').checked = true;
+    if (!g.won) setupCoach();
+    toast('Tips will show again', 1600);
+  });
   $('menu').addEventListener('click', (ev) => { if (ev.target === $('menu') && progress.seenMenu) closeMenu(); });
-  $('btn-play').addEventListener('click', () => { Audio.unlock(); closeMenu(); });
+  $('btn-play').addEventListener('click', () => { Audio.unlock(); playFromMenu(); });
 
   // Pointer clicks should not leave focus on a HUD button (Space/Enter would re-trigger it).
   document.addEventListener('click', (ev) => {
@@ -647,10 +868,14 @@
   setPreview(g.preview, true);
 
   // ------------------------------------------------------------ layout + loop
-  function resize() {
+  function fitCanvas() {
     const r = stage.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    renderer.resize(Math.max(50, r.width), Math.max(50, r.height), dpr);
+    const w = Math.max(50, r.width), h = Math.max(50, r.height);
+    if (w !== renderer.W || h !== renderer.H || dpr !== renderer.dpr) renderer.resize(w, h, dpr);
+  }
+  function resize() {
+    fitCanvas();
     if (g.level) {
       const want = bestRotation(g.levelIndex, g.rot);
       if (want !== g.rot) switchRotation(want);
@@ -702,6 +927,8 @@
     else if (!g.won && g.dawn > 0) g.dawn = Math.max(0, g.dawn - 0.05);
     // previews only while idle (and not mid auto-walk)
     g.showPreviews = g.preview && !g.anim && !g.won && !g.queue.length && t - g.idleSince > 90 ? computePreviews() : null;
+    g.coachTiles = computeCoachTiles();
+    if (!g.won && t - (g.hintCheckAt || 0) > 1000) { g.hintCheckAt = t; maybeHintTip(); }
     renderer.draw(g, t);
     requestAnimationFrame(frame);
   }
@@ -725,7 +952,9 @@
     g, input, undo: doUndo, rewind: doRewind, restart: doRestart, hint: doHint, load: loadLevel, tap: tapTile, findWalk,
     tileToScreen: (x, y) => renderer.tileToScreen(x, y),
     analysisDone: () => { const A = analysis(); return !!(A && A.done); },
+    coach: () => ({ row: g.coachRow, lesson: g.coach ? g.coach.lesson.id : null, step: g.coach ? g.coach.step : null,
+      text: $('coach').hidden ? '' : $('coach-text').textContent, tiles: g.coachTiles ? g.coachTiles.length : 0, seen: Object.assign({}, coachMem.seen) }),
   };
-  if (!progress.seenMenu && !params.has('level')) { $('howto').open = true; openMenu(); }
+  if (!progress.seenMenu && !params.has('level')) openMenu();
   requestAnimationFrame(frame);
 })();

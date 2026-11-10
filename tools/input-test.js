@@ -48,7 +48,7 @@ const find = (pred) => DEFS.findIndex(pred);
   // ---------------------------------------------------------------- first visit
   await page.goto(BASE, 1200);
   let s = await st();
-  check('first visit opens the title menu with How to play open', s.menu && await page.eval('document.getElementById("howto").open'));
+  check('first visit opens the title screen, How to play closed', s.menu && !(await page.eval('document.getElementById("howto").open')));
   await page.key('Escape');
   s = await st();
   check('Escape closes the menu', !s.menu);

@@ -29,12 +29,15 @@ const VIEWPORTS = {
   smalland: [640, 360, 2, true],
 };
 const keysOf = (moves) => moves.map((d) => L.DIR_CHAR[d]).join('');
-function solutionKeys(i) {
-  const { level, state } = L.parseLevel(DEFS[i]);
+// Key strings depend on the rotation the page picks for the viewport (wide
+// islands turn 90 degrees on a portrait phone), so they take `rot`.
+const parsed = (i, rot) => L.parseLevel(rot ? L.rotateDef(DEFS[i]) : DEFS[i]);
+function solutionKeys(i, rot) {
+  const { level, state } = parsed(i, rot);
   return keysOf(moveOptimal(level, state).moves);
 }
-function fatalKeys(i) {
-  const { level, state } = L.parseLevel(DEFS[i]);
+function fatalKeys(i, rot) {
+  const { level, state } = parsed(i, rot);
   const info = new V.Analysis(level, state); info.run();
   for (const p of V.pushes(level, state)) {
     if (V.distance(level, info, p.next) === -1) return keysOf(V.walkPath(level, state, p.from).concat([p.dir]));
@@ -43,21 +46,21 @@ function fatalKeys(i) {
 }
 const idx = (name) => DEFS.findIndex((d) => d.name === name);
 
-// Each screen: [query, setup-eval or null, wait ms]. Query null = first visit, no params.
+// Each screen: (rot) => [query, setup-eval or null, wait ms]. Query null = first visit, no params.
 const SCREENS = {
   title: () => [null, null, 1600],
   play: () => ['level=1&coach=0', null, 1500],
   coach: () => ['level=1', null, 1700],
   preview: () => ['level=' + (idx('Black Ice') + 1) + '&coach=0', null, 1700],
   frost: () => ['level=' + (idx('Hoarfrost') + 1), null, 1700],
-  stuck: () => { const i = idx('First Light'); return ['level=' + (i + 1) + '&coach=0&play=' + fatalKeys(i), null, 1500]; },
-  win: () => { const i = idx('Cascade'); return ['level=' + (i + 1) + '&coach=0&play=' + solutionKeys(i), null, 2600]; },
+  stuck: (rot) => { const i = idx('First Light'); return ['level=' + (i + 1) + '&play=' + fatalKeys(i, rot), null, 1500]; },
+  win: (rot) => { const i = idx('Cascade'); return ['level=' + (i + 1) + '&coach=0&play=' + solutionKeys(i, rot), null, 2600]; },
   levels: () => ['level=5&coach=0', `(() => {
       const p = { best: {}, perfect: {}, current: 4, seenMenu: true, preview: true, deadBar: true };
       ${JSON.stringify(DEFS.slice(0, 4).map((d) => [d.name, d.par]))}.forEach(([n, par], k) => { p.best[n] = par + (k === 2 ? 1 : 0); if (k !== 2) p.perfect[n] = true; });
       localStorage.setItem('menhir2.progress', JSON.stringify(p));
       localStorage.setItem('menhir.progress', JSON.stringify(p));
-      return true; })()`, 0],
+      return true; })()`, 1300],
 };
 
 (async () => {
@@ -72,7 +75,16 @@ const SCREENS = {
     for (const sc of screens) {
       const page = await launch({ width: w, height: h });
       await page.viewport(w, h, scale, mobile);
-      const [query, setup, wait] = SCREENS[sc]();
+      let rot = 0;
+      if (sc === 'stuck' || sc === 'win') {
+        // Same lesson setting as the shot itself: the lesson row changes the
+        // board's space, and with it the rotation.
+        const i = idx(sc === 'win' ? 'Cascade' : 'First Light');
+        await page.goto(BASE + `?level=${i + 1}` + (sc === 'win' ? '&coach=0' : ''), 500);
+        rot = await page.eval('menhir.g.rot');
+        await page.eval('localStorage.clear()');
+      }
+      const [query, setup, wait] = SCREENS[sc](rot);
       if (setup) {
         await page.goto(BASE + '?level=1&coach=0', 500);
         await page.eval(setup);

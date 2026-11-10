@@ -11,45 +11,63 @@
 <body>
   <div id="app">
     <header id="hud">
-      <button class="icon-btn" id="btn-menu" aria-label="Levels (Esc)" title="Levels (Esc)">
+      <button class="icon-btn quiet" id="btn-menu" aria-label="Islands (Esc)" title="Islands (Esc)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
       </button>
       <div id="level-title">
         <span id="lvl-num">1</span>
         <span id="lvl-name">First Light</span>
       </div>
-      <div id="moves" aria-live="polite" title="Pushes so far, and par (the fewest possible)"><span id="pushes-n">0</span><span class="lbl">pushes · par <span id="par-n">–</span></span><span class="sr-only"><span id="moves-n">0</span> moves</span></div>
+      <div id="moves" aria-live="polite" title="Pushes so far, and par (the fewest possible)">
+        <span id="pushes-n">0</span><span class="lbl"><span id="pushes-word">pushes</span> · par <span id="par-n">–</span></span>
+        <span class="sr-only"><span id="moves-n">0</span> moves</span>
+      </div>
       <div class="hud-actions">
-        <button class="icon-btn" id="btn-preview" aria-label="Push previews (P)" title="Push previews (P)" aria-pressed="true">
+        <button class="icon-btn labelled" id="btn-undo" aria-label="Undo (Z)" title="Undo (Z / Backspace)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4.5V2.5" /><path d="M4.8 7A8 8 0 1 1 4 13.5" /></svg><span class="txt">Undo</span><kbd>Z</kbd>
+        </button>
+        <button class="icon-btn labelled" id="btn-restart" aria-label="Restart (R)" title="Restart (R)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4v5h-5"/><path d="M19.6 9A8 8 0 1 0 20 14"/></svg><span class="txt">Restart</span><kbd>R</kbd>
+        </button>
+        <button class="icon-btn labelled" id="btn-hint" aria-label="Hint (H)" title="Hint (H): show the next push. A hinted solve earns no golden sun.">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg><span class="txt">Hint</span><kbd>H</kbd>
+        </button>
+        <span class="hud-sep" aria-hidden="true"></span>
+        <button class="icon-btn quiet" id="btn-preview" aria-label="Push previews (P)" title="Push previews (P)" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/><path class="slash" d="M4 20L20 4"/></svg>
         </button>
-        <button class="icon-btn" id="btn-hint" aria-label="Hint (H)" title="Hint (H): show the next push. A hinted solve earns no golden sun.">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>
-        </button>
-        <button class="icon-btn" id="btn-undo" aria-label="Undo (Z)" title="Undo (Z / Backspace)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4.5V2.5" /><path d="M4.8 7A8 8 0 1 1 4 13.5" /></svg>
-        </button>
-        <button class="icon-btn" id="btn-restart" aria-label="Restart (R)" title="Restart (R)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4v5h-5"/><path d="M19.6 9A8 8 0 1 0 20 14"/></svg>
-        </button>
-        <button class="icon-btn" id="btn-sound" aria-label="Sound on/off (M)" title="Sound (M)">
+        <button class="icon-btn quiet" id="btn-sound" aria-label="Sound on/off (M)" title="Sound (M)">
           <svg class="snd-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6"/><path d="M18 6.5a8 8 0 0 1 0 11"/></svg>
           <svg class="snd-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
         </button>
       </div>
     </header>
 
+    <!-- Message row: the lesson on an island that brings in a new rule, or the island's riddle -->
+    <section id="coach" class="coach" aria-live="polite" hidden>
+      <div class="coach-body">
+        <p class="coach-chip" id="coach-chip"></p>
+        <p class="coach-text" id="coach-text"></p>
+        <p class="coach-sub" id="coach-sub"></p>
+      </div>
+      <button class="coach-x" id="coach-x" aria-label="Hide this tip" title="Hide this tip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+      </button>
+    </section>
+
     <main id="stage">
       <canvas id="board" aria-label="Puzzle board"></canvas>
       <div id="toast" role="status" aria-live="polite"></div>
       <div id="stuck" class="stuck" role="alert" hidden>
-        <span id="stuck-text">No way forward from here.</span>
+        <div class="stuck-words">
+          <span id="stuck-text">No way forward from here.</span>
+          <span id="stuck-sub" hidden></span>
+        </div>
         <button id="btn-rewind" class="btn primary small">Rewind <kbd>Shift Z</kbd></button>
       </div>
     </main>
 
     <footer id="foot">
-      <p id="hint"></p>
       <div id="pad" aria-label="Touch controls">
         <button class="pad-btn pad-aux" id="pad-undo" aria-label="Undo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4.5V2.5" /><path d="M4.8 7A8 8 0 1 1 4 13.5" /></svg>
@@ -74,50 +92,59 @@
       </div>
     </footer>
 
-    <!-- Title / level select -->
-    <section id="menu" class="overlay" aria-label="Level select">
+    <!-- Title / island select -->
+    <section id="menu" class="overlay" aria-label="Menhir: title and islands">
       <div class="menu-card">
         <div class="menu-art" aria-hidden="true"></div>
         <div class="menu-body">
           <h1>Menhir</h1>
           <p class="tagline">Raise the stones before dawn.</p>
-          <p id="progress-line"></p>
-          <ol id="level-list"></ol>
-          <div class="menu-actions">
-            <button class="btn primary" id="btn-play">Play</button>
-            <button class="btn ghost" id="btn-music">Music: on</button>
+          <div class="menu-cta">
+            <button class="btn primary big" id="btn-play"><span id="play-label">Play</span><span id="play-sub"></span></button>
+            <p id="progress-line"></p>
           </div>
-          <label class="option"><input type="checkbox" id="opt-deadbar" checked> <span>Tell me when there is no way forward (with a Rewind button)</span></label>
+          <h2 class="section-label">Islands</h2>
+          <ol id="level-list"></ol>
+          <div class="menu-settings">
+            <label class="option"><input type="checkbox" id="opt-tips" checked> <span>Tips while playing</span></label>
+            <label class="option"><input type="checkbox" id="opt-deadbar" checked> <span>Say when there is no way forward</span></label>
+            <div class="settings-row">
+              <button class="btn ghost small" id="btn-music">Music: on</button>
+              <button class="btn ghost small" id="btn-tips-reset">Show all tips again</button>
+            </div>
+          </div>
           <details id="howto">
             <summary>How to play</summary>
-            <ul>
-              <li><b>Move</b> with the arrow keys or WASD (on a phone: the pad, or swipe on the board). <b>Walk into a stone to push it.</b>
-                Holding a key keeps walking but never pushes, so a stone only moves on a fresh press.
-                <b>Click or tap a tile</b> to walk there; tap a stone right next to you to push it.</li>
-              <li>Stones are tall blocks. Pushed upright, they <b>topple</b> onto the next two tiles. Pushed along their length, they <b>rise</b> on the tile beyond. Pushed from the side, they <b>roll</b>.</li>
-              <li>A moving stone <b>knocks on</b> any stone in its way, in the same direction, like dominoes. If anything in the chain is blocked, nothing moves.</li>
-              <li><b>Frost</b> is slick: a pushed stone keeps tipping the same way while any part of it is on frost. A sliding stone that hits another stone <b>knocks it on and stops</b>; the knocked stone slides on if it lands on frost. You walk on frost normally.</li>
-              <li>Stand a stone on every <b>socket</b>. Plain stones count either way up. <b>Marked stones</b> (gold band) only count with the <b>sun mark facing the sky</b>; the band shows which end carries it.</li>
-              <li>The islands have <b>walled shores</b>: stones stop against the wall. Open <b>water</b> swallows a stone for good. <b>Bog</b> swallows a stone and turns to firm ground where it sank. You can't wade into either.</li>
-              <li>Dashed outlines (eye button or <kbd>P</kbd>) show where every push you can make right now would leave the stones, chains and slides included.
-                If a push leaves the island unwinnable, a bar says so and <b>Rewind</b> takes you back. <b>Hint</b> (<kbd>H</kbd>) shows the next push, but a hinted solve earns no golden sun. Undo is free and unlimited.</li>
-            </ul>
+            <dl class="rules">
+              <dt>Goal</dt><dd>Stand a stone on every socket. Marked stones (gold band) must stand with the sun to the sky.</dd>
+              <dt>Move</dt><dd><span class="kb-only">Arrow keys or WASD, or click a tile.</span><span class="touch-only">Swipe the board, use the pad, or tap a tile.</span></dd>
+              <dt>Push</dt><dd>Walk into a stone<span class="touch-only">, or tap it from beside it</span>. Holding a key walks but never pushes.</dd>
+              <dt>Stones</dt><dd>A standing stone <b>topples</b>. A lying stone <b>rises</b> when pushed along its length and <b>rolls</b> when pushed from the side.</dd>
+              <dt>Dominoes</dt><dd>A moving stone knocks on any stone in its way. If anything in the chain is blocked, nothing moves.</dd>
+              <dt>Frost</dt><dd>A stone keeps tipping until it is off the ice. If it hits a stone, it stops and knocks that one on.</dd>
+              <dt>Bog, water</dt><dd>Bog swallows a stone and becomes firm ground. Water swallows it for good.</dd>
+              <dt>Help</dt><dd>Dashed outlines preview each push. Rewind undoes back to the last winnable position. Hint shows the next push, but costs the golden sun.</dd>
+              <dt>Par</dt><dd>The fewest pushes that solve the island. Match it without hints for a golden sun.</dd>
+            </dl>
+            <p class="keys"><kbd>Z</kbd> undo <kbd>Shift Z</kbd> rewind <kbd>R</kbd> restart <kbd>H</kbd> hint <kbd>P</kbd> previews <kbd>Esc</kbd> islands <kbd>M</kbd> sound</p>
           </details>
-          <p class="keys"><kbd>Z</kbd> undo &nbsp;<kbd>Shift Z</kbd> rewind &nbsp;<kbd>R</kbd> restart &nbsp;<kbd>H</kbd> hint &nbsp;<kbd>P</kbd> previews &nbsp;<kbd>Esc</kbd> levels &nbsp;<kbd>M</kbd> sound</p>
         </div>
       </div>
     </section>
 
-    <!-- Level complete -->
-    <section id="win" class="overlay" aria-label="Level complete">
+    <!-- Island solved -->
+    <section id="win" class="overlay" aria-label="Island solved">
       <div class="win-card">
+        <button class="win-x" id="btn-win-stay" aria-label="Close and stay on this island" title="Stay on this island (Esc)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+        </button>
         <div id="win-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></div>
         <p class="win-kicker">Dawn breaks on</p>
         <h2 id="win-name">First Light</h2>
         <p id="win-stats"></p>
         <p id="win-note"></p>
         <div class="win-actions">
-          <button class="btn ghost" id="btn-win-stay">Stay</button>
+          <button class="btn ghost" id="btn-replay">Replay</button>
           <button class="btn primary" id="btn-next">Next island</button>
         </div>
       </div>
@@ -127,6 +154,7 @@
   <script src="js/logic.js"></script>
   <script src="js/solver.js"></script>
   <script src="js/levels.js"></script>
+  <script src="js/coach.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>

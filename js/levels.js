@@ -10,6 +10,8 @@
  *                       its other half, which is '=' (east-west) or '|' (north-south)
  * par  : fewest pushes that solve the island (checked by `node tools/solve.js --check`)
  * teaches: what the island is built around; tools/solve.js checks that it is needed
+ * hint : one line shown above the board until the island is solved (plain text).
+ *        Islands that bring in a rule also have a lesson in js/coach.js.
  */
 (function (root) {
   const LEVELS = [
@@ -18,7 +20,7 @@
       par: 2,
       tag: 'Tutorial',
       teaches: [],
-      hint: 'Walk into a stone to push it. A standing stone <b>topples</b>; a fallen one <b>rises</b> again when pushed along its length. Stand it on the socket. (Click or tap a tile to walk there.)',
+      hint: 'Topple the stone, then raise it onto the socket.',
       map: [
         '          ',
         '   ....   ',
@@ -43,7 +45,7 @@
       par: 2,
       tag: 'Dominoes',
       teaches: ['domino'],
-      hint: 'A falling stone <b>knocks on</b> any stone in its way, like dominoes. Three stones in a row: see what a single push can do.',
+      hint: 'Three stones in a row. See what a single push can do.',
       map: [
         '             ',
         ' ....        ',
@@ -64,7 +66,7 @@
       par: 3,
       tag: 'Frost',
       teaches: ['frost'],
-      hint: '<b>Frost</b> is slick: a pushed stone keeps tipping the same way while any part of it is on the ice. You walk on it normally.',
+      hint: 'A patch of ice lies between the stone and its socket.',
       map: [
         '         ',
         ' o...... ',
@@ -87,7 +89,7 @@
       par: 2,
       tag: 'Frost and dominoes',
       teaches: ['frost', 'domino'],
-      hint: 'A stone sliding on frost that hits another stone <b>knocks it on and stops</b>. You can’t reach the far stone, but the ice can.',
+      hint: 'You can’t reach the far stone, but the ice can.',
       map: [
         '            ',
         ' ...        ',
@@ -156,7 +158,7 @@
       par: 9,
       tag: 'Bog',
       teaches: ['bog'],
-      hint: '<b>Bog</b> swallows a stone and turns to firm ground where it sank; open <b>water</b> just swallows it. One stone has to go under, so choose exactly where.',
+      hint: 'One stone has to go under, so choose exactly where.',
       map: [
         '             ',
         ' ....   o... ',
@@ -179,7 +181,7 @@
       par: 5,
       tag: 'Marked stone',
       teaches: ['mark'],
-      hint: 'A <b>marked stone</b> (gold band) only counts with its <b>sun mark facing the sky</b>; the band shows which end carries it. Pushing straight on will not do.',
+      hint: 'Pushing straight on will not do.',
       map: [
         '       ',
         ' ..... ',
