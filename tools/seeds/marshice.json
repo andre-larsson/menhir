@@ -1,0 +1,36 @@
+{
+ "name": "Marsh Ice",
+ "teaches": [
+  "mark",
+  "frost"
+ ],
+ "pushes": [
+  6,
+  14
+ ],
+ "maxStates": 20000,
+ "mutate": [
+  "stones",
+  "sockets",
+  "keeper"
+ ],
+ "weights": {
+  "frost": 0.3
+ },
+ "map": [
+  "         ",
+  " ...%..o ",
+  " .**%**. ",
+  " ...%... ",
+  " ...%... ",
+  "         "
+ ],
+ "objs": [
+  "         ",
+  "         ",
+  "         ",
+  "  =E  P  ",
+  "     []@ ",
+  "         "
+ ]
+}

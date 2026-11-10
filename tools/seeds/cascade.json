@@ -1,0 +1,37 @@
+{
+ "name": "Cascade",
+ "teaches": [
+  "domino"
+ ],
+ "pushes": [
+  5,
+  12
+ ],
+ "maxStates": 30000,
+ "mutate": [
+  "stones",
+  "keeper",
+  "rock"
+ ],
+ "weights": {
+  "knocks": 0.5
+ },
+ "map": [
+  "             ",
+  " ....        ",
+  " ....        ",
+  " ......o.o.o ",
+  " ....        ",
+  " ....        ",
+  "             "
+ ],
+ "objs": [
+  "             ",
+  "             ",
+  "  @          ",
+  "    P P P    ",
+  "             ",
+  "             ",
+  "             "
+ ]
+}

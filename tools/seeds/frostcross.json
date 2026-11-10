@@ -1,0 +1,41 @@
+{
+ "name": "Frost Cross",
+ "teaches": [
+  "mark",
+  "frost",
+  "domino"
+ ],
+ "pushes": [
+  8,
+  14
+ ],
+ "maxStates": 30000,
+ "mutate": [
+  "stones",
+  "sockets",
+  "keeper"
+ ],
+ "weights": {
+  "knocks": 0.5,
+  "frost": 0.3,
+  "walk": 0.6
+ },
+ "map": [
+  "         ",
+  "  .#.... ",
+  " ..*.*.. ",
+  " ..***.. ",
+  "  o*.*.. ",
+  "  ..#.o. ",
+  "         "
+ ],
+ "objs": [
+  "         ",
+  "         ",
+  "   @=E   ",
+  "     N   ",
+  "     |   ",
+  "         ",
+  "         "
+ ]
+}

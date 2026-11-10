@@ -1,0 +1,39 @@
+{
+ "name": "Odd One Out",
+ "teaches": [
+  "mark",
+  "domino"
+ ],
+ "pushes": [
+  8,
+  16
+ ],
+ "maxStates": 30000,
+ "mutate": [
+  "stones",
+  "keeper",
+  "rock"
+ ],
+ "weights": {
+  "knocks": 0.4,
+  "walk": 0.4
+ },
+ "map": [
+  "              ",
+  "  .....       ",
+  " .......      ",
+  " .......o.o.o ",
+  " .......      ",
+  "  .....       ",
+  "              "
+ ],
+ "objs": [
+  "              ",
+  "              ",
+  "              ",
+  " @   U D D    ",
+  "              ",
+  "              ",
+  "              "
+ ]
+}
