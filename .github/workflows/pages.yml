@@ -22,9 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@v7.0.1
       - name: Setup Node
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: "24"
       - name: Rule and level checks
@@ -36,7 +36,7 @@ jobs:
       - name: Check
         run: test -f _site/index.html
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4.0.0
+        uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: _site
 
@@ -49,4 +49,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5.0.0
+        uses: actions/deploy-pages@v5.0.1
